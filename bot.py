@@ -10,7 +10,6 @@ wib = pytz.timezone('Asia/Singapore')
 
 class AssetoFinance:
     def __init__(self) -> None:
-        
         self.RPC_URL = "https://atlantic.dplabs-internal.com/"
         self.EXPLORER = "https://atlantic.pharosscan.xyz/tx/"
         self.USDT_CONTRACT_ADDRESS = "0xE7E84B8B4f39C507499c40B4ac199B050e2882d5"
@@ -40,11 +39,11 @@ class AssetoFinance:
 
     def welcome(self):
         print(f"""
-{Fore.GREEN + Style.BRIGHT}  ╔═══════════════════════════════════════════════════╗
-{Fore.GREEN + Style.BRIGHT}  ║         Asseto Finance Auto BOT v4               ║
-{Fore.GREEN + Style.BRIGHT}  ║   Subscribe <---> Redeem (1-9 USDT Random)           ║
-{Fore.GREEN + Style.BRIGHT}  ║     ║
-{Fore.GREEN + Style.BRIGHT}  ╚═══════════════════════════════════════════════════╝{Style.RESET_ALL}
+{Fore.GREEN + Style.BRIGHT} ╔═══════════════════════════════════════════════════╗
+{Fore.GREEN + Style.BRIGHT} ║ Asseto Finance Auto BOT v5 ║
+{Fore.GREEN + Style.BRIGHT} ║ Subscribe <---> Redeem  ║
+{Fore.GREEN + Style.BRIGHT} ║ ║
+{Fore.GREEN + Style.BRIGHT} ╚═══════════════════════════════════════════════════╝{Style.RESET_ALL}
         """)
 
     async def load_proxies(self):
@@ -73,7 +72,6 @@ class AssetoFinance:
         return addr[:6] + "******" + addr[-4:]
 
     async def get_web3(self):
-        
         web3 = Web3(Web3.HTTPProvider(self.RPC_URL, request_kwargs={"timeout": 60}))
         try:
             web3.eth.get_block_number()
@@ -130,7 +128,6 @@ class AssetoFinance:
         allowance = token.functions.allowance(address, router).call()
         if allowance >= amount_wei:
             return True
-
         try:
             approve_data = token.functions.approve(router, amount_wei)
             gas = approve_data.estimate_gas({"from": address})
@@ -147,25 +144,23 @@ class AssetoFinance:
             receipt = await self.wait_for_receipt(web3, tx_hash)
             if receipt.status == 1:
                 self.used_nonce[address] += 1
-                self.log(f"{Fore.CYAN+Style.BRIGHT}   Approve Success | Block: {receipt.blockNumber}{Style.RESET_ALL}")
+                self.log(f"{Fore.CYAN+Style.BRIGHT} Approve Success | Block: {receipt.blockNumber}{Style.RESET_ALL}")
                 await asyncio.sleep(5)
                 return True
         except Exception as e:
-            self.log(f"{Fore.RED+Style.BRIGHT}   Approve Failed: {str(e)[:80]}{Style.RESET_ALL}")
+            self.log(f"{Fore.RED+Style.BRIGHT} Approve Failed: {str(e)[:80]}{Style.RESET_ALL}")
         return False
 
     async def perform_subscribe(self, account: str, address: str, amount: float, max_retries=3):
         for attempt in range(1, max_retries + 1):
             try:
-                self.log(f"{Fore.CYAN+Style.BRIGHT}   [Attempt {attempt}] Subscribe {amount} USDT{Style.RESET_ALL}")
+                self.log(f"{Fore.CYAN+Style.BRIGHT} [Attempt {attempt}] Subscribe {amount} USDT{Style.RESET_ALL}")
                 web3 = await self.get_web3()
                 router = web3.to_checksum_address(self.CASH_CONTRACT_ADDRESS)
                 asset = web3.to_checksum_address(self.USDT_CONTRACT_ADDRESS)
                 amount_wei = int(amount * 1e6)
-
                 if not await self.approving_token(account, address, router, asset, amount_wei):
                     continue
-
                 contract = web3.eth.contract(address=router, abi=self.CONTRACT_ABI)
                 tx_data = contract.functions.subscribe(asset, amount_wei)
                 gas = tx_data.estimate_gas({"from": address})
@@ -180,36 +175,34 @@ class AssetoFinance:
                 signed = web3.eth.account.sign_transaction(tx, account)
                 tx_hash = await self.send_raw_transaction(signed.raw_transaction.hex())
                 receipt = await self.wait_for_receipt(web3, tx_hash)
-
                 if receipt.status == 1:
                     self.used_nonce[address] += 1
                     self.subscribed_amounts.setdefault(address, []).append(amount)
-                    self.log(f"{Fore.GREEN+Style.BRIGHT}   Success | Block: {receipt.blockNumber}{Style.RESET_ALL}")
-                    self.log(f"{Fore.CYAN+Style.BRIGHT}   Tx: {self.EXPLORER}{tx_hash}{Style.RESET_ALL}")
+                    self.log(f"{Fore.GREEN+Style.BRIGHT} Success | Block: {receipt.blockNumber}{Style.RESET_ALL}")
+                    self.log(f"{Fore.CYAN+Style.BRIGHT} Tx: {self.EXPLORER}{tx_hash}{Style.RESET_ALL}")
                     return True
                 else:
                     raise Exception("TX reverted")
             except Exception as e:
                 err = str(e).lower()
-                self.log(f"{Fore.YELLOW+Style.BRIGHT}   [Attempt {attempt}] Failed: {err[:100]}{Style.RESET_ALL}")
+                self.log(f"{Fore.YELLOW+Style.BRIGHT} [Attempt {attempt}] Failed: {err[:100]}{Style.RESET_ALL}")
                 if "nonce" in err or "already known" in err or "invalid_request" in err:
                     self.used_nonce[address] = web3.eth.get_transaction_count(address, "pending")
                 if attempt < max_retries:
                     await asyncio.sleep(3 * attempt)
                 else:
-                    self.log(f"{Fore.RED+Style.BRIGHT}   Subscribe Failed Permanently{Style.RESET_ALL}")
+                    self.log(f"{Fore.RED+Style.BRIGHT} Subscribe Failed Permanently{Style.RESET_ALL}")
                     return False
         return False
 
     async def perform_redemption(self, account: str, address: str, amount: float, max_retries=3):
         for attempt in range(1, max_retries + 1):
             try:
-                self.log(f"{Fore.CYAN+Style.BRIGHT}   [Attempt {attempt}] Redeem {amount} CASH+{Style.RESET_ALL}")
+                self.log(f"{Fore.CYAN+Style.BRIGHT} [Attempt {attempt}] Redeem {amount} CASH+{Style.RESET_ALL}")
                 web3 = await self.get_web3()
                 router = web3.to_checksum_address(self.CASH_CONTRACT_ADDRESS)
                 asset = web3.to_checksum_address(self.USDT_CONTRACT_ADDRESS)
                 amount_wei = int(amount * 1e18)
-
                 contract = web3.eth.contract(address=router, abi=self.CONTRACT_ABI)
                 tx_data = contract.functions.redemption(asset, amount_wei)
                 gas = tx_data.estimate_gas({"from": address})
@@ -224,25 +217,24 @@ class AssetoFinance:
                 signed = web3.eth.account.sign_transaction(tx, account)
                 tx_hash = await self.send_raw_transaction(signed.raw_transaction.hex())
                 receipt = await self.wait_for_receipt(web3, tx_hash)
-
                 if receipt.status == 1:
                     self.used_nonce[address] += 1
                     if address in self.subscribed_amounts and amount in self.subscribed_amounts[address]:
                         self.subscribed_amounts[address].remove(amount)
-                    self.log(f"{Fore.GREEN+Style.BRIGHT}   Success | Block: {receipt.blockNumber}{Style.RESET_ALL}")
-                    self.log(f"{Fore.CYAN+Style.BRIGHT}   Tx: {self.EXPLORER}{tx_hash}{Style.RESET_ALL}")
+                    self.log(f"{Fore.GREEN+Style.BRIGHT} Success | Block: {receipt.blockNumber}{Style.RESET_ALL}")
+                    self.log(f"{Fore.CYAN+Style.BRIGHT} Tx: {self.EXPLORER}{tx_hash}{Style.RESET_ALL}")
                     return True
                 else:
                     raise Exception("TX reverted")
             except Exception as e:
                 err = str(e).lower()
-                self.log(f"{Fore.YELLOW+Style.BRIGHT}   [Attempt {attempt}] Failed: {err[:100]}{Style.RESET_ALL}")
+                self.log(f"{Fore.YELLOW+Style.BRIGHT} [Attempt {attempt}] Failed: {err[:100]}{Style.RESET_ALL}")
                 if "nonce" in err or "invalid_request" in err:
                     self.used_nonce[address] = web3.eth.get_transaction_count(address, "pending")
                 if attempt < max_retries:
                     await asyncio.sleep(3 * attempt)
                 else:
-                    self.log(f"{Fore.RED+Style.BRIGHT}   Redeem Failed Permanently{Style.RESET_ALL}")
+                    self.log(f"{Fore.RED+Style.BRIGHT} Redeem Failed Permanently{Style.RESET_ALL}")
                     return False
         return False
 
@@ -256,31 +248,26 @@ class AssetoFinance:
     def print_question(self):
         self.clear_terminal()
         self.welcome()
-
         while True:
             try:
                 self.tx_count = int(input(f"{Fore.YELLOW + Style.BRIGHT}Tx Count (Cycles) -> {Style.RESET_ALL}"))
                 if self.tx_count > 0: break
             except: pass
-
         while True:
             try:
                 self.min_delay = int(input(f"{Fore.YELLOW + Style.BRIGHT}Min Delay (sec) -> {Style.RESET_ALL}"))
                 if self.min_delay >= 0: break
             except: pass
-
         while True:
             try:
                 self.max_delay = int(input(f"{Fore.YELLOW + Style.BRIGHT}Max Delay (sec) -> {Style.RESET_ALL}"))
                 if self.max_delay >= self.min_delay: break
             except: pass
-
         while True:
             try:
-                use_proxy = int(input(f"{Fore.BLUE + Style.BRIGHT}1. With Proxy  | 2. No Proxy -> {Style.RESET_ALL}"))
+                use_proxy = int(input(f"{Fore.BLUE + Style.BRIGHT}1. With Proxy | 2. No Proxy -> {Style.RESET_ALL}"))
                 if use_proxy in [1, 2]: break
             except: pass
-
         return use_proxy == 1
 
     async def process_account(self, pk: str, addr: str, use_proxy: bool):
@@ -295,56 +282,56 @@ class AssetoFinance:
         for cycle in range(self.tx_count):
             self.log(f"{Fore.GREEN+Style.BRIGHT}Cycle {cycle+1}/{self.tx_count}{Style.RESET_ALL}")
 
-            
-            amount = random.randint(1, 9)
-            self.log(f"{Fore.CYAN+Style.BRIGHT}   Subscribe {amount} USDT{Style.RESET_ALL}")
+            # === GET CURRENT USDT BALANCE ===
             balance = await self.get_token_balance(addr, self.USDT_CONTRACT_ADDRESS, use_proxy)
-            if not balance or balance < amount:
-                self.log(f"{Fore.YELLOW+Style.BRIGHT}   Insufficient USDT{Style.RESET_ALL}")
+            if not balance or balance < 1:
+                self.log(f"{Fore.YELLOW+Style.BRIGHT}Insufficient USDT (balance: {balance or 0:.2f} USDT){Style.RESET_ALL}")
                 break
+
+            # === DYNAMIC RANDOM AMOUNT: 1 to floor(balance) ===
+            max_amount = int(balance)  # e.g. 6.73 → 6
+            amount = random.randint(1, max_amount)
+
+            self.log(f"{Fore.CYAN+Style.BRIGHT}Subscribe {amount} USDT (Balance: {balance:.2f} USDT){Style.RESET_ALL}")
+
             if not await self.perform_subscribe(pk, addr, amount):
-                self.log(f"{Fore.RED+Style.BRIGHT}   Subscribe Failed. Skip Cycle.{Style.RESET_ALL}")
+                self.log(f"{Fore.RED+Style.BRIGHT}Subscribe Failed. Skip Cycle.{Style.RESET_ALL}")
                 await self.print_timer()
                 continue
+
             await self.print_timer()
 
-            
+            # === REDEEM LAST SUBSCRIBED AMOUNT ===
             if addr in self.subscribed_amounts and self.subscribed_amounts[addr]:
                 redeem_amt = self.subscribed_amounts[addr][-1]
-                self.log(f"{Fore.CYAN+Style.BRIGHT}   Redeem {redeem_amt} CASH+{Style.RESET_ALL}")
-                balance = await self.get_token_balance(addr, self.CASH_CONTRACT_ADDRESS, use_proxy)
-                if balance and balance >= redeem_amt:
+                self.log(f"{Fore.CYAN+Style.BRIGHT}Redeem {redeem_amt} CASH+{Style.RESET_ALL}")
+                cash_balance = await self.get_token_balance(addr, self.CASH_CONTRACT_ADDRESS, use_proxy)
+                if cash_balance and cash_balance >= redeem_amt:
                     await self.perform_redemption(pk, addr, redeem_amt)
                 else:
-                    self.log(f"{Fore.YELLOW+Style.BRIGHT}   Insufficient CASH+{Style.RESET_ALL}")
+                    self.log(f"{Fore.YELLOW+Style.BRIGHT}Insufficient CASH+ (have {cash_balance or 0:.2f}){Style.RESET_ALL}")
             await self.print_timer()
 
     async def main(self):
         try:
             with open('accounts.txt', 'r') as f:
                 accounts = [line.strip() for line in f if line.strip()]
-
             use_proxy = self.print_question()
             if use_proxy:
                 await self.load_proxies()
-
             self.clear_terminal()
             self.welcome()
             self.log(f"{Fore.GREEN+Style.BRIGHT}Accounts: {len(accounts)}{Style.RESET_ALL}")
-
             for pk in accounts:
                 addr = self.generate_address(pk)
                 if not addr:
                     self.log(f"{Fore.RED+Style.BRIGHT}Invalid Private Key{Style.RESET_ALL}")
                     continue
-
                 self.log(f"{Fore.CYAN+Style.BRIGHT}==[ {self.mask_account(addr)} ]=={Style.RESET_ALL}")
                 await self.process_account(pk, addr, use_proxy)
                 await asyncio.sleep(2)
-
             self.log(f"{Fore.CYAN+Style.BRIGHT}All Done. Restart in 24h...{Style.RESET_ALL}")
             await asyncio.sleep(24 * 3600)
-
         except FileNotFoundError:
             self.log(f"{Fore.RED+Style.BRIGHT}accounts.txt not found!{Style.RESET_ALL}")
         except KeyboardInterrupt:
