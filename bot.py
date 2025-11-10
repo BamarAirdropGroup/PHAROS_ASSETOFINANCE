@@ -353,7 +353,7 @@ class AssetoFinance:
         for cycle in range(self.tx_count):
             self.log(f"{Fore.GREEN+Style.BRIGHT}Cycle {cycle+1}/{self.tx_count}{Style.RESET_ALL}")
 
-            amount = random.randint(1, 9)
+            amount = random.randint(1, 5)
             self.log(f"{Fore.CYAN+Style.BRIGHT}   Subscribe {amount} USDT{Style.RESET_ALL}")
 
             usdt_balance = await self.get_token_balance(addr, self.USDT_CONTRACT_ADDRESS, use_proxy, is_usdt=True)
